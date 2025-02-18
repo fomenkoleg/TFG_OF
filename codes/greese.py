@@ -2,7 +2,6 @@ import numpy as np
 from pprint import pprint
 import random
 
-
 def data_collect():
     # Data recollection
     with open("datasets/email/email-main.txt", "r") as dataset_graph:
@@ -37,6 +36,13 @@ def f_funct(v, adj_matrix, s):
     neighbors_v = set(neighbors(v, adj_matrix))
     return len(neighbors_v & s) / len(s) 
 
+def data_collect_groups():
+    with open("datasets/email/email-labels.txt", "r") as dataset_labels:
+        data = np.loadtxt(dataset_labels, dtype=int, max_rows=70)
+
+    unique_vertices = np.unique(data[:, 0])
+    return [tuple([int(v)] + list(map(int, data[data[:, 0] == v, 1]))) for v in unique_vertices]
+
 def first_arrangement(v_set, e_set, adj_matrix):
 
     n_communities = random.randint(4, round(len(v_set)/10))   
@@ -65,7 +71,8 @@ def first_arrangement(v_set, e_set, adj_matrix):
     
     pprint(vertex_community_tuples)
 
- 
 if __name__ == "__main__":
     e_set, e_count, v_set, v_count, adj_matrix = data_collect()
     first_arrangement(v_set, e_set, adj_matrix)
+    groups = data_collect_groups()
+    pprint(groups)
