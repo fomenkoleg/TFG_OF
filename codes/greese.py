@@ -1,6 +1,7 @@
 import numpy as np
 from pprint import pprint
 import random
+import onmi
 
 def data_collect():
     # Data recollection
@@ -40,8 +41,18 @@ def data_collect_groups():
     with open("datasets/email/email-labels.txt", "r") as dataset_labels:
         data = np.loadtxt(dataset_labels, dtype=int, max_rows=70)
 
+
     unique_vertices = np.unique(data[:, 0])
-    return [tuple([int(v)] + list(map(int, data[data[:, 0] == v, 1]))) for v in unique_vertices]
+    ground_truth = []
+    for v in unique_vertices:
+        groups = []
+        for line in data:
+            #line = map(int, line.split())
+            if int(line[0]) == v and len(line) > 1:
+                groups.append(int(line[1]))
+        ground_truth.append((int(v), *groups))
+    return ground_truth
+    #return [tuple([int(v)] + list(map(int, data[data[:, 0] == v, 1]))) for v in unique_vertices]
 
 def first_arrangement(v_set, e_set, adj_matrix):
 
@@ -69,10 +80,23 @@ def first_arrangement(v_set, e_set, adj_matrix):
             t = (int(v), int(communities_per_v[v]))
             vertex_community_tuples.append(t)
     
-    pprint(vertex_community_tuples)
+    return vertex_community_tuples
 
 if __name__ == "__main__":
     e_set, e_count, v_set, v_count, adj_matrix = data_collect()
-    first_arrangement(v_set, e_set, adj_matrix)
-    groups = data_collect_groups()
-    pprint(groups)
+
+    # Grouping prediction
+    prediction = first_arrangement(v_set, e_set, adj_matrix)
+    print("Predicted groupings: ")
+    pprint(prediction)
+
+    # Ground truth collection
+    ground_truth = data_collect_groups()
+    print("Ground Truth Array: ")
+    pprint(ground_truth)
+
+
+    # Efficiency comparison
+    # Using ONMI
+    accuracy = onmi.normalized_mutual_information(prediction, ground_truth)
+    print(accuracy)
