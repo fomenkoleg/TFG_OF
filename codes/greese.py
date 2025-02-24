@@ -54,9 +54,9 @@ def data_collect_groups():
     return ground_truth
     #return [tuple([int(v)] + list(map(int, data[data[:, 0] == v, 1]))) for v in unique_vertices]
 
-def first_arrangement(v_set, e_set, adj_matrix):
-
-    n_communities = random.randint(4, round(len(v_set)/10))   
+def first_arrangement(v_set):
+    # For communities to overlap, there should be a minimum of 2 communities present
+    n_communities = random.randint(2, round(len(v_set)/2))   
     communities = list(range(n_communities))
 
     communities_per_v = np.random.choice(communities, len(v_set))
@@ -86,14 +86,14 @@ if __name__ == "__main__":
     e_set, e_count, v_set, v_count, adj_matrix = data_collect()
 
     # Grouping prediction
-    prediction = first_arrangement(v_set, e_set, adj_matrix)
+    prediction = first_arrangement(v_set)
     print("Predicted groupings: ")
     pprint(prediction)
 
     # Ground truth collection
     ground_truth = data_collect_groups()
     print("Ground Truth Array: ")
-    pprint(ground_truth)
+    #pprint(ground_truth)
     # Efficiency comparison
     # Using ONMI
     accuracy = onmi.onmi(ground_truth, prediction)
