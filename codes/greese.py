@@ -94,9 +94,7 @@ if __name__ == "__main__":
     ground_truth = data_collect_groups()
     print("Ground Truth Array: ")
     pprint(ground_truth)
-
-
     # Efficiency comparison
     # Using ONMI
-    accuracy = onmi.normalized_mutual_information(prediction, ground_truth)
+    accuracy = onmi.onmi(ground_truth, prediction)
     print(accuracy)
