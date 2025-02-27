@@ -2,11 +2,15 @@ import numpy as np
 from pprint import pprint
 import random
 import onmi
+import dotenv
+
+GROUND_TRUTH = env()
 
 def data_collect():
     # Data recollection
     with open("datasets/email/email-main.txt", "r") as dataset_graph:
-        data = np.loadtxt(dataset_graph, dtype=int, max_rows=50)
+        #data = np.loadtxt(dataset_graph, dtype=int, max_rows=50)
+        data = np.loadtxt(dataset_graph, dtype=int)
 
     # Extract unique vertices and count them
     e_set = set(map(tuple, data))
@@ -39,7 +43,8 @@ def f_funct(v, adj_matrix, s):
 
 def data_collect_groups():
     with open("datasets/email/email-labels.txt", "r") as dataset_labels:
-        data = np.loadtxt(dataset_labels, dtype=int, max_rows=70)
+        # data = np.loadtxt(dataset_labels, dtype=int, max_rows=70)
+        data = np.loadtxt(dataset_labels, dtype=int)
 
 
     unique_vertices = np.unique(data[:, 0])
@@ -47,12 +52,11 @@ def data_collect_groups():
     for v in unique_vertices:
         groups = []
         for line in data:
-            #line = map(int, line.split())
             if int(line[0]) == v and len(line) > 1:
                 groups.append(int(line[1]))
         ground_truth.append((int(v), *groups))
     return ground_truth
-    #return [tuple([int(v)] + list(map(int, data[data[:, 0] == v, 1]))) for v in unique_vertices]
+    
 
 def first_arrangement(v_set):
     # For communities to overlap, there should be a minimum of 2 communities present
@@ -87,13 +91,14 @@ if __name__ == "__main__":
 
     # Grouping prediction
     prediction = first_arrangement(v_set)
-    print("Predicted groupings: ")
-    pprint(prediction)
+    # print("Predicted groupings: ")
+    # pprint(prediction)
 
     # Ground truth collection
     ground_truth = data_collect_groups()
-    print("Ground Truth Array: ")
-    #pprint(ground_truth)
+    # print("Ground Truth Array: ")
+    # pprint(ground_truth)
+
     # Efficiency comparison
     # Using ONMI
     accuracy = onmi.onmi(ground_truth, prediction)
