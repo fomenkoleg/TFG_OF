@@ -14,58 +14,28 @@ def parse_cluster_data(data):
             matrix[node_index[node], comm_index[group]] = 1
     return matrix
 
-def h(w, n):
-    """Entropy contribution: h(w, n) = -w * log2(w/n), with check to avoid log2(0)."""
-    if w == 0:
-        return 0
-    value = -w * np.log2(w / n)
-    return max(value, 0)  # Ensure no negative contribution
-
-def conditional_entropy(Xi, Yj):
-    """Conditional entropy H*(Xi | Yj) from Eq. (2) of the paper."""
-    n = len(Xi)
-    a = np.sum((Xi == 1) & (Yj == 1))
-    b = np.sum((Xi == 0) & (Yj == 1))
-    c = np.sum((Xi == 1) & (Yj == 0))
-    d = np.sum((Xi == 0) & (Yj == 0))
-    
-    # Calculate entropies
-    h_a, h_b, h_c, h_d = h(a, n), h(b, n), h(c, n), h(d, n)
-    h_bd, h_ac = h(b + d, n), h(a + c, n)
-    h_cd, h_ab = h(c + d, n), h(a + b, n)
-    
-    # Conditional entropy calculation
-    H_Xi_Yj = h_a + h_b + h_c + h_d - h_bd - h_ac
-    H_Xi_Yj = max(H_Xi_Yj, 0)  # Ensure no negative values
-    
-    # Apply technical correction (if vectors are near complements)
-    return H_Xi_Yj if h_a + h_d >= h_b + h_c else h_cd + h_ab
-
-def H_given(X, Y):
-    """H(X | Y): sum of minimal conditional entropies."""
-    return np.sum([min(conditional_entropy(X[:, i], Y[:, j]) for j in range(Y.shape[1])) 
-                   for i in range(X.shape[1])])
-
 def entropy(X):
-    """Entropy H(X) from the paper."""
-    n, k = X.shape
-    return np.sum([h(np.sum(X[:, i] == 1), n) + h(np.sum(X[:, i] == 0), n) for i in range(k)])
+    """Computes entropy H(X)."""
+    n = X.shape[0]
+    p_x = np.sum(X, axis=0) / n  # Probability of each cluster
+    p_x = p_x[p_x > 0]  # Remove zero probabilities
+    return -np.sum(p_x * np.log2(p_x))
+
+def joint_entropy(X, Y):
+    """Computes joint entropy H(X, Y)."""
+    p_xy = (X.T @ Y) / np.sum(X.T @ Y)  # Normalize to sum to 1
+    p_xy = p_xy[p_xy > 0]  # Remove zero probabilities
+    return -np.sum(p_xy * np.log2(p_xy))
 
 def mutual_information(X, Y):
-    """Mutual information I(X : Y) from Eq. (5)."""
-    H_X, H_Y = entropy(X), entropy(Y)
-    H_X_given_Y = H_given(X, Y)
-    H_Y_given_X = H_given(Y, X)
-    I_XY = 0.5 * (H_X - H_X_given_Y + H_Y - H_Y_given_X)
-    return max(I_XY, 0)  # Ensure mutual information is non-negative
-
-def nmi_max(X, Y):
-    """NMI using max entropy: I(X : Y) / max(H(X), H(Y))"""
-    I_XY = mutual_information(X, Y)
-    H_X, H_Y = entropy(X), entropy(Y)
-    return I_XY / max(max(H_X, H_Y), 1e-10)
+    """Computes mutual information I(X : Y)."""
+    return entropy(X) + entropy(Y) - joint_entropy(X, Y)
 
 def onmi(gt, pred):
+    """Computes ONMI based on the given formula."""
     X = parse_cluster_data(gt)
     Y = parse_cluster_data(pred)
-    return nmi_max(X, Y)
+
+    I_XY = mutual_information(X, Y)
+    H_X, H_Y = entropy(X), entropy(Y)
+    return I_XY / max(H_X, H_Y, 1e-10)  # Avoid division by zero

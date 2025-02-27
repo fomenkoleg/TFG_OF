@@ -2,9 +2,11 @@ import numpy as np
 from pprint import pprint
 import random
 import onmi
-import dotenv
+import overlap_modularity
 
-GROUND_TRUTH = env()
+
+OVERLAPPING = True
+GROUNDTRUTH = True
 
 def data_collect():
     # Data recollection
@@ -42,20 +44,30 @@ def f_funct(v, adj_matrix, s):
     return len(neighbors_v & s) / len(s) 
 
 def data_collect_groups():
-    with open("datasets/email/email-labels.txt", "r") as dataset_labels:
-        # data = np.loadtxt(dataset_labels, dtype=int, max_rows=70)
-        data = np.loadtxt(dataset_labels, dtype=int)
+
+    if OVERLAPPING:
+        data = []
+        with open(filename, 'r') as file:
+            for line in file:
+                columns = line.strip().split()
+                data.append(columns)
+
+    else:
+
+        with open("datasets/email/email-labels.txt", "r") as dataset_labels:
+            # data = np.loadtxt(dataset_labels, dtype=int, max_rows=70)
+            data = np.loadtxt(dataset_labels, dtype=int)
 
 
-    unique_vertices = np.unique(data[:, 0])
-    ground_truth = []
-    for v in unique_vertices:
-        groups = []
-        for line in data:
-            if int(line[0]) == v and len(line) > 1:
-                groups.append(int(line[1]))
-        ground_truth.append((int(v), *groups))
-    return ground_truth
+        unique_vertices = np.unique(data[:, 0])
+        ground_truth = []
+        for v in unique_vertices:
+            groups = []
+            for line in data:
+                if int(line[0]) == v and len(line) > 1:
+                    groups.append(int(line[1]))
+            ground_truth.append((int(v), *groups))
+        return ground_truth
     
 
 def first_arrangement(v_set):
@@ -102,4 +114,8 @@ if __name__ == "__main__":
     # Efficiency comparison
     # Using ONMI
     accuracy = onmi.onmi(ground_truth, prediction)
+    print(accuracy)
+
+    # Using Overlapping Modularity
+    accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
     print(accuracy)
