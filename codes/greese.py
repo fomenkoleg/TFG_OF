@@ -4,6 +4,7 @@ import random
 import onmi
 import overlap_modularity
 import greedyconstructor
+from time import sleep
 
 OVERLAPPING = True
 GROUNDTRUTH = True
@@ -63,7 +64,7 @@ def data_collect_groups():
         for line in data:
             if v == line[0]:
                 groups.append(*line[1:])
-        ground_truth.append((v, *groups))
+        ground_truth.append([v, *groups])
     return ground_truth
 
 def first_arrangement(v_set):
@@ -96,7 +97,7 @@ def first_arrangement(v_set):
 if __name__ == "__main__":
     e_set, e_count, v_set, v_count, adj_matrix = data_collect()
 
-    pprint(adj_matrix)
+    #pprint(adj_matrix)
     # Grouping prediction
     # prediction = first_arrangement(v_set)
     # print("Predicted groupings: ")
@@ -104,8 +105,8 @@ if __name__ == "__main__":
 
     # Ground truth collection
     ground_truth = data_collect_groups()
-    print("Ground Truth Array: ")
-    pprint(ground_truth)
+    #print("Ground Truth Array: ")
+    #pprint(ground_truth)
 
     # # Testing numbers
     # for _ in range(10):
@@ -119,15 +120,32 @@ if __name__ == "__main__":
     #     print(accuracy) 
 
     # Grouping prediction
-    prediction = greedyconstructor.greedysol(adj_matrix, v_set, e_set, e_count, v_count, 0.2)
-    print("Predicted groupings: ")
-    pprint(prediction)
-    # Efficiency comparison
-    # Using ONMI
-   
-    accuracy = onmi.onmi(ground_truth, prediction)
-    print(accuracy)
 
-    # Using Overlapping Modularity
-    accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
-    print(accuracy)
+    accuracies = []
+    percentages = [0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.01]
+    depth = 0
+    for percentage in percentages:
+        print()
+        print(f"Calculating overlapping community prediction with {percentage*100}% of nodes belonging to other communities")
+        prediction = greedyconstructor.greedysol(adj_matrix, v_set, v_count, percentage, depth)
+        # print("Predicted groupings: ")
+        #pprint(prediction)
+        # Efficiency comparison
+        # Using ONMI
+        accuracy = onmi.onmi(ground_truth, prediction)
+        # pprint(ground_truth[:20])
+        # pprint(prediction[:20])
+        
+        print("ONMI:", accuracy)
+        accuracies.append(accuracy)
+        # Using Overlapping Modularity
+        accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
+        print("OM:", accuracy)
+        accuracies.append(accuracy)
+
+
+    print("| PERCENTAGE  | ONMI |  OM  |")
+    c = 0
+    for i in range(0, len(accuracies), 2):
+        print(f"|     {'%.2f'%percentages[c]}    | {'%.2f'%accuracies[i]} | {'%.2f'%accuracies[i+1]} |")
+        c += 1
