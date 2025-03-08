@@ -3,6 +3,7 @@ from pprint import pprint
 import random
 import onmi
 import overlap_modularity
+import greedyconstructor
 
 OVERLAPPING = True
 GROUNDTRUTH = True
@@ -13,12 +14,7 @@ GT_FILE = "datasets/email/email-labels.txt"
 def data_collect():
     # Data recollection
     with open(GRAPH_FILE, "r") as dataset_graph:
-    #with open("datasets/email/email-main.txt", "r") as dataset_graph:
-    #with open("datasets/amazon/amazon-main.txt", "r") as dataset_graph:
         data = np.loadtxt(dataset_graph, dtype=int)
-        #data = np.loadtxt(dataset_graph, dtype=int)
-
-    print(len(data))
     # Extract unique vertices and count them
     e_set = set(map(tuple, data))
     v_set = np.unique(data)
@@ -54,43 +50,21 @@ def f_funct(v, adj_matrix, s):
     return len(neighbors_v & s) / len(s) 
 
 def data_collect_groups():
+    data = []
+    with open(GT_FILE, "r") as file:
+        for line in file:
+            columns = line.strip().split()
+            data.append(list(map(int, columns)))
 
-    if OVERLAPPING:
-        data = []
-        #with open("datasets/amazon/amazon-labels", 'r') as file:
-        with open(GT_FILE, "r") as file:
-            for line in file:
-                columns = line.strip().split()
-                data.append(list(map(int, columns)))
-        
-        vertices = list(range(len(data)))
-        ground_truth = []
-        for v in vertices:
-            groups = []
-            for line in data:
-                if v == line[0]:
-                    groups.append(*line[1:])
-            ground_truth.append((v, *groups))
-        return ground_truth
-    
-    else:
-
-        with open("datasets/email/email-labels.txt", "r") as dataset_labels:
-            # data = np.loadtxt(dataset_labels, dtype=int, max_rows=70)
-            data = np.loadtxt(dataset_labels, dtype=int)
-
-
-        unique_vertices = np.unique(data[:, 0])
-        ground_truth = []
-        for v in unique_vertices:
-            groups = []
-            for line in data:
-                if int(line[0]) == v and len(line) > 1:
-                    groups.append(int(line[1]))
-            ground_truth.append((int(v), *groups))
-        return ground_truth
-    
-
+    vertices = list(range(len(data)))
+    ground_truth = []
+    for v in vertices:
+        groups = []
+        for line in data:
+            if v == line[0]:
+                groups.append(*line[1:])
+        ground_truth.append((v, *groups))
+    return ground_truth
 
 def first_arrangement(v_set):
     # For communities to overlap, there should be a minimum of 2 communities present
@@ -110,9 +84,7 @@ def first_arrangement(v_set):
                 comm = -1
                 while comm == -1 or int(comm) == int(communities_per_v[v]) or comm in extra_comm_array:
                      comm = np.random.choice(communities)
-                     #print("Passing node ", v)
                 extra_comm_array.append(int(comm))
-                
             t = (int(v), *sorted(extra_comm_array))
             vertex_community_tuples.append(t)
         else:
@@ -126,15 +98,30 @@ if __name__ == "__main__":
 
     pprint(adj_matrix)
     # Grouping prediction
-    prediction = first_arrangement(v_set)
-    print("Predicted groupings: ")
-    pprint(prediction)
+    # prediction = first_arrangement(v_set)
+    # print("Predicted groupings: ")
+    # pprint(prediction)
 
     # Ground truth collection
     ground_truth = data_collect_groups()
     print("Ground Truth Array: ")
     pprint(ground_truth)
 
+    # # Testing numbers
+    # for _ in range(10):
+    #     # Grouping prediction
+    #     prediction = first_arrangement(v_set)
+    #     accuracy = onmi.onmi(ground_truth, prediction)
+    #     print("ONMI: ", end="")
+    #     print(accuracy)
+    #     print("Overlapping Modularity: ", end="")
+    #     accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
+    #     print(accuracy) 
+
+    # Grouping prediction
+    prediction = greedyconstructor.greedysol(adj_matrix, v_set, e_set, e_count, v_count, 0.2)
+    print("Predicted groupings: ")
+    pprint(prediction)
     # Efficiency comparison
     # Using ONMI
    
@@ -144,15 +131,3 @@ if __name__ == "__main__":
     # Using Overlapping Modularity
     accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
     print(accuracy)
-
-
-    # Testing numbers
-    for _ in range(10):
-        # Grouping prediction
-        prediction = first_arrangement(v_set)
-        accuracy = onmi.onmi(ground_truth, prediction)
-        print("ONMI: ", end="")
-        print(accuracy)
-        print("Overlapping Modularity: ", end="")
-        accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
-        print(accuracy) 
