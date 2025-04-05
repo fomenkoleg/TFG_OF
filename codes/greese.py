@@ -5,6 +5,8 @@ import onmi
 import overlap_modularity
 import greedyconstructor
 from time import sleep
+from prettytable import PrettyTable
+
 
 OVERLAPPING = True
 GROUNDTRUTH = True
@@ -122,8 +124,9 @@ if __name__ == "__main__":
     # Grouping prediction
 
     accuracies = []
-    percentages = [0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.01]
-    depth = 0
+    # percentages = [0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.01]
+    percentages = [0.8, 0.01]
+    depth = 1
     for percentage in percentages:
         print()
         print(f"Calculating overlapping community prediction with {percentage*100}% of nodes belonging to other communities")
@@ -144,8 +147,14 @@ if __name__ == "__main__":
         accuracies.append(accuracy)
 
 
-    print("| PERCENTAGE  | ONMI |  OM  |")
+    result_table = PrettyTable()
+    result_table.field_names = ["PERCENTAGE", "ONMI", "OM"]
     c = 0
     for i in range(0, len(accuracies), 2):
-        print(f"|     {'%.2f'%percentages[c]}    | {'%.2f'%accuracies[i]} | {'%.2f'%accuracies[i+1]} |")
+        result_table.add_row([
+        f"{percentages[c]:.2f}",
+        f"{accuracies[i]:.2f}",
+        f"{accuracies[i+1]:.2f}"
+        ])
         c += 1
+    print(result_table)
