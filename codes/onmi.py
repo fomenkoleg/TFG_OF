@@ -2,7 +2,7 @@ import numpy as np
 
 def parse_cluster_data(data):
     """Parses clustering data into a binary matrix."""
-    nodes = sorted(set(node for node, *groups in data))
+    nodes = sorted(set(node for node, *_ in data))
     communities = sorted(set(comm for _, *groups in data for comm in groups))
     
     node_index = {node: i for i, node in enumerate(nodes)}
@@ -14,39 +14,34 @@ def parse_cluster_data(data):
             matrix[node_index[node], comm_index[group]] = 1
     return matrix
 
-def entropy(X):
-    """Computes entropy H(X)."""
-    n = X.shape[0]
-    p_x = np.sum(X, axis=0) / n  # Probability of each cluster
-    p_x = p_x[p_x > 0]  # Remove zero probabilities
-    return -np.sum(p_x * np.log2(p_x)) if len(p_x) > 0 else 0.0  # Handle empty case
+def onmi(pred, gt):
 
-def joint_entropy(X, Y):
-    """Computes joint entropy H(X, Y)."""
-    xy = X.T @ Y
-    total = np.sum(xy)
-    if total == 0:  # Handle edge case when matrices have no overlap
-        return 0.0
-    p_xy = xy / total
-    p_xy = p_xy[p_xy > 0]  # Remove zero probabilities
-    return -np.sum(p_xy * np.log2(p_xy)) if len(p_xy) > 0 else 0.0  # Handle empty case
+    X = parse_cluster_data(pred)
+    Y = parse_cluster_data(gt)
 
-def mutual_information(X, Y):
-    """Computes mutual information I(X : Y)."""
-    return entropy(X) + entropy(Y) - joint_entropy(X, Y)
-
-def onmi(gt, pred):
-    """Computes ONMI based on the given formula."""
-    X = parse_cluster_data(gt)
-    Y = parse_cluster_data(pred)
+    n_nodes = X.shape[0]
+    eps = np.finfo(float).eps  # Small constant to avoid log(0)
     
-    I_XY = mutual_information(X, Y)
-    H_X = entropy(X)
-    H_Y = entropy(Y)
+    # Entropy H(X)
+    p_X = np.sum(X, axis=0) / n_nodes  # P(community k in X)
+    H_X = -np.sum(p_X * np.log(p_X + eps))
     
-    # Handle edge cases
-    if H_X == 0 and H_Y == 0:  # Both empty or single cluster
-        return 1.0 if np.array_equal(X, Y) else 0.0
-    elif H_X == 0 or H_Y == 0:  # One clustering has zero entropy
-        return 0.0
-    return I_XY / max(H_X, H_Y)  # Avoid division by zero
+    # Entropy H(Y)
+    p_Y = np.sum(Y, axis=0) / n_nodes  # P(community l in Y)
+    H_Y = -np.sum(p_Y * np.log(p_Y + eps))
+    
+    # Mutual Information I(X, Y)
+    I_XY = 0.0
+    for k in range(X.shape[1]):  # For each community in X
+        for l in range(Y.shape[1]):  # For each community in Y
+            # Joint probability P(node in community k AND l)
+            p_joint = np.sum(X[:, k] * Y[:, l]) / n_nodes
+            p_k = p_X[k]  # P(community k in X)
+            p_l = p_Y[l]  # P(community l in Y)
+            I_XY += p_joint * np.log2((p_joint + eps) / (p_k * p_l + eps))
+    
+    # Normalization: I(X,Y) / max(H(X), H(Y))
+    
+    
+    ONMI = I_XY / max(H_X, H_Y)
+    return ONMI  # Ensures result is in [0, 1

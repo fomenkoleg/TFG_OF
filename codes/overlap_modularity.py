@@ -1,55 +1,88 @@
 import numpy as np
 from collections import defaultdict
 
-def parse_cluster_data(data):
-    """Parses clustering data into a binary matrix and community mappings."""
-    nodes = sorted(set(node for node, *groups in data))
-    communities = sorted(set(comm for _, *groups in data for comm in groups))
+def parse_cluster_data(cluster_data):
+    """Parse clustering data into efficient data structures.
     
-    node_index = {node: i for i, node in enumerate(nodes)}
-    comm_index = {comm: i for i, comm in enumerate(communities)}
+    Args:
+        cluster_data: List of lists where each sublist is [node, comm1, comm2, ...]
     
-    matrix = np.zeros((len(nodes), len(communities)), dtype=int)
+    Returns:
+        tuple: (community_matrix, node_to_comms, comm_to_nodes)
+    """
+    nodes = sorted({item[0] for item in cluster_data})
+    communities = sorted({comm for item in cluster_data for comm in item[1:]})
+    
+    node_idx = {node: i for i, node in enumerate(nodes)}
+    comm_idx = {comm: i for i, comm in enumerate(communities)}
+    
+    # Binary matrix (nodes x communities)
+    community_matrix = np.zeros((len(nodes), len(communities)), dtype=int)
+    
+    # Mapping structures
     node_to_comms = defaultdict(set)
+    comm_to_nodes = defaultdict(set)
     
-    for node, *groups in data:
-        for group in groups:
-            matrix[node_index[node], comm_index[group]] = 1
-            node_to_comms[node].add(group)
+    for item in cluster_data:
+        node = item[0]
+        for comm in item[1:]:
+            community_matrix[node_idx[node], comm_idx[comm]] = 1
+            node_to_comms[node].add(comm)
+            comm_to_nodes[comm].add(node)
     
-    return matrix, node_to_comms
+    return community_matrix, node_to_comms, comm_to_nodes
 
-def overlapping_modularity(edges, e_count, node_communities):
-    """Computes the overlapping modularity of a given clustering."""
-    # Calculate degree for each node
+def compute_degrees(edges):
+    """Compute degree for each node from edge list."""
     degree = defaultdict(int)
-    for edge in edges:
-        # This is for undirected graphs
-        degree[edge[0]] += 1
-        degree[edge[1]] += 1
+    for u, v in edges:
+        degree[u] += 1
+        degree[v] += 1
+    return degree
+
+def overlapping_modularity(edges, cluster_data):
+    """Compute overlapping modularity for a given clustering.
     
-    # Parse the cluster data
-    _, node_to_comms = parse_cluster_data(node_communities)
-    eq = 0.0
+    Args:
+        edges: List of tuples representing graph edges
+        cluster_data: List of lists where each sublist is [node, comm1, comm2, ...]
     
-    # Get all unique communities
-    communities = set(comm for comms in node_to_comms.values() for comm in comms)
+    Returns:
+        float: Overlapping modularity score
+    """
+    if not edges or not cluster_data:
+        return 0.0
     
-    for c in communities:
-        # Find edges where both nodes belong to the community c
-        filtered_edges = [(i, j) for i, j in edges if c in node_to_comms[i] and c in node_to_comms[j]]
+    # Preprocess data
+    e_count = len(edges)
+    degree = compute_degrees(edges)
+    _, node_to_comms, comm_to_nodes = parse_cluster_data(cluster_data)
+    
+    total_modularity = 0.0
+    
+    for comm in comm_to_nodes:
+        # Find all node pairs in this community that have edges
+        comm_nodes = comm_to_nodes[comm]
+        comm_edges = [(u, v) for u, v in edges 
+                      if u in comm_nodes and v in comm_nodes]
         
-        if len(filtered_edges) == 0:
+        if not comm_edges:
             continue
         
-        # Compute required arrays
-        i_vals, j_vals = zip(*filtered_edges)
-        A_ij = np.ones(len(filtered_edges))
-        k_i = np.array([degree[i] for i in i_vals])
-        k_j = np.array([degree[j] for j in j_vals])
-        O_i = np.array([len(node_to_comms[i]) for i in i_vals])
-        O_j = np.array([len(node_to_comms[j]) for j in j_vals])
+        # Vectorized calculations
+        u_nodes, v_nodes = zip(*comm_edges)
+        A_ij = 1  # Since we filtered existing edges
         
-        eq += np.sum((A_ij - (k_i * k_j) / (2 * e_count)) * (1 / (O_i * O_j)))
+        # Get degrees and overlaps for all nodes in these edges
+        k_i = np.array([degree[u] for u in u_nodes])
+        k_j = np.array([degree[v] for v in v_nodes])
+        O_i = np.array([len(node_to_comms[u]) for u in u_nodes])
+        O_j = np.array([len(node_to_comms[v]) for v in v_nodes])
+        
+        # Compute modularity contribution for this community
+        community_contribution = np.sum(
+            (A_ij - (k_i * k_j) / (2 * e_count)) / (O_i * O_j))
+        
+        total_modularity += community_contribution
     
-    return eq / (2 * e_count) if e_count > 0 else 0
+    return total_modularity / (2 * e_count)

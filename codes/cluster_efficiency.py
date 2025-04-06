@@ -1,18 +1,16 @@
 import numpy as np
 from pprint import pprint
 import random
-import onmi
-import overlap_modularity
 import greedyconstructor
-from time import sleep
 from prettytable import PrettyTable
-
+import codes.overlap_modularity as overlap_modularity
+import codes.onmi as onmi
 
 OVERLAPPING = True
 GROUNDTRUTH = True
 
-GRAPH_FILE = "datasets/email/email-main.txt"
-GT_FILE = "datasets/email/email-labels.txt"
+GRAPH_FILE = "datasets/dblp/dblp-main.txt"
+GT_FILE = "datasets/dblp/dblp-labels.txt"
 
 def data_collect():
     # Data recollection
@@ -53,25 +51,19 @@ def f_funct(v, adj_matrix, s):
     return len(neighbors_v & s) / len(s) 
 
 def data_collect_groups():
-    data = []
+    ground_truth = []
+
     with open(GT_FILE, "r") as file:
         for line in file:
-            columns = line.strip().split()
-            data.append(list(map(int, columns)))
-
-    vertices = list(range(len(data)))
-    ground_truth = []
-    for v in vertices:
-        groups = []
-        for line in data:
-            if v == line[0]:
-                groups.append(*line[1:])
-        ground_truth.append([v, *groups])
+            parts = list(map(int, line.strip().split()))
+            ground_truth.append(parts)
     return ground_truth
 
 def first_arrangement(v_set):
     # For communities to overlap, there should be a minimum of 2 communities present
-    n_communities = random.randint(2, round(len(v_set)/2))  
+    n_communities = 5
+    # n_communities = random.randint(2, round(len(v_set)/2))  
+    print("Number of communities:", n_communities)
     communities = list(range(1, n_communities))
 
     communities_per_v = np.random.choice(communities, len(v_set))
@@ -99,17 +91,28 @@ def first_arrangement(v_set):
 if __name__ == "__main__":
     e_set, e_count, v_set, v_count, adj_matrix = data_collect()
 
-    #pprint(adj_matrix)
     # Grouping prediction
     # prediction = first_arrangement(v_set)
     # print("Predicted groupings: ")
     # pprint(prediction)
 
     # Ground truth collection
-    ground_truth = data_collect_groups()
-    #print("Ground Truth Array: ")
-    #pprint(ground_truth)
+    ground_truth = data_collect_groups()    
 
+    # accuracy = onmi_my.onmi(prediction, ground_truth)
+    # print("ONMI_mine:", accuracy)
+
+    # accuracy = overlap_modularity_test.overlapping_modularity(e_set, prediction)
+    # print("OM_test:", accuracy)
+    # accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
+    # print("OM:", accuracy)
+
+    # accuracy = onmi_test.onmi(ground_truth, prediction)
+    # print("ONMI_test:", accuracy)
+    # accuracy = onmi.onmi(ground_truth, prediction)
+    # print("ONMI:", accuracy)
+
+    #     print("ONMI: ", end="")
     # # Testing numbers
     # for _ in range(10):
     #     # Grouping prediction
@@ -124,27 +127,36 @@ if __name__ == "__main__":
     # Grouping prediction
 
     accuracies = []
-    # percentages = [0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.01]
-    percentages = [0.8, 0.01]
+    percentages = [0.8, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05, 0.01]
     depth = 1
     for percentage in percentages:
         print()
         print(f"Calculating overlapping community prediction with {percentage*100}% of nodes belonging to other communities")
         prediction = greedyconstructor.greedysol(adj_matrix, v_set, v_count, percentage, depth)
-        # print("Predicted groupings: ")
-        #pprint(prediction)
+    
+        # print("Predicted groupings")
+        # pprint(prediction[:10])
+        # print("Ground truth groupings")
+        # pprint(ground_truth[:10])
+
         # Efficiency comparison
         # Using ONMI
-        accuracy = onmi.onmi(ground_truth, prediction)
-        # pprint(ground_truth[:20])
-        # pprint(prediction[:20])
-        
-        print("ONMI:", accuracy)
+        accuracy = onmi.onmi(prediction, ground_truth)
+        print("ONMI value:", accuracy)
         accuracies.append(accuracy)
+        # accuracy = onmi.onmi(ground_truth, prediction)
+        # accuracy = onmi_test.onmi(ground_truth, prediction)
+        # print("ONMI_test:", accuracy)
+        # accuracies.append(accuracy)
+        # accuracy = onmi.onmi(ground_truth, prediction)
+        # print("ONMI:", accuracy)
+
         # Using Overlapping Modularity
-        accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
-        print("OM:", accuracy)
+        accuracy = overlap_modularity.overlapping_modularity(e_set, prediction)
+        print("OM value:", accuracy)
         accuracies.append(accuracy)
+        # accuracy = overlap_modularity.overlapping_modularity(e_set, e_count, prediction)
+        # print("OM:", accuracy)
 
 
     result_table = PrettyTable()
@@ -152,9 +164,9 @@ if __name__ == "__main__":
     c = 0
     for i in range(0, len(accuracies), 2):
         result_table.add_row([
-        f"{percentages[c]:.2f}",
-        f"{accuracies[i]:.2f}",
-        f"{accuracies[i+1]:.2f}"
+        f"{percentages[c]:.3f}",
+        f"{accuracies[i]:.3f}",
+        f"{accuracies[i+1]:.3f}"
         ])
         c += 1
     print(result_table)
